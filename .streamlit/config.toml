@@ -3,4 +3,8 @@ enableCORS = false
 enableXsrfProtection = false
 
 [browser]
+<<<<<<< HEAD
 serverAddress = "0.0.0.0"
+=======
+serverAddress = "0.0.0.0"
+>>>>>>> 3f740706a820befe631748204f87d492654542c7
