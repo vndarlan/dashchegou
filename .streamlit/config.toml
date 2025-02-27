@@ -1,8 +1,6 @@
 [server]
-port = $PORT
 enableCORS = false
 enableXsrfProtection = false
 
 [browser]
 serverAddress = "0.0.0.0"
-serverPort = $PORT
