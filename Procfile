@@ -1,1 +1,1 @@
-web: streamlit run Home.py
+web: streamlit run Home.py --server.port=$PORT
