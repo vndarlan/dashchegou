@@ -1,5 +1,4 @@
 import streamlit as st
-from datetime import datetime
 import os
 
 # Configurar o servidor programaticamente
@@ -10,7 +9,10 @@ if "PORT" in os.environ:
 
 # Configuração da página inicial
 st.set_page_config(
-    page_title="Dashboard de Calendários da Empresa",
-    page_icon="📅",
+    page_title="Gestão Grupo Chegou",
+    page_icon="🏢",
     layout="wide"
 )
+
+# Título único na página inicial
+st.title("Gestão Grupo Chegou")
