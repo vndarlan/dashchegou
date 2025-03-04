@@ -5,11 +5,8 @@ import altair as alt
 import json
 from urllib.request import urlopen
 
-# Configurar o servidor programaticamente
-if "PORT" in os.environ:
-    port = int(os.environ["PORT"])
-    st.set_option('server.port', port)
-    st.set_option('server.address', '0.0.0.0')
+# Nota: A configuração do servidor deve ser feita via command line ou config.toml
+# e não pode ser alterada programaticamente no código
 
 # Configuração da página inicial
 st.set_page_config(
