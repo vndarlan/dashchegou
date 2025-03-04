@@ -140,18 +140,46 @@ def add_custom_css():
 
 # Função para obter os dados dos países
 def get_countries_data():
-    countries = [
-        {"id": "BRA", "name": "Brasil", "status": "discontinued", "iso_alpha": "BRA", "description": "Foi um dos primeiros mercados internacionais, mas operações encerradas em 2022."},
-        {"id": "PAN", "name": "Panamá", "status": "discontinued", "iso_alpha": "PAN", "description": "Operações iniciadas em 2019 e encerradas em 2023 devido a desafios logísticos."},
-        {"id": "CHL", "name": "Chile", "status": "selling", "iso_alpha": "CHL", "description": "Mercado em crescimento desde 2020, com forte presença nas principais cidades."},
-        {"id": "MEX", "name": "México", "status": "selling", "iso_alpha": "MEX", "description": "Um dos mercados mais importantes, com operações desde 2018."},
-        {"id": "ECU", "name": "Equador", "status": "selling", "iso_alpha": "ECU", "description": "Operações estáveis e lucrativas desde 2021."},
-        {"id": "COL", "name": "Colômbia", "status": "selling", "iso_alpha": "COL", "description": "Mercado em expansão com alto potencial de crescimento."},
-        {"id": "ESP", "name": "Espanha", "status": "testing", "iso_alpha": "ESP", "description": "Fase de testes iniciada em 2024, avaliando viabilidade do mercado europeu."},
-        {"id": "PRT", "name": "Portugal", "status": "testing", "iso_alpha": "PRT", "description": "Testes iniciais com potencial para ser porta de entrada para Europa."},
-        {"id": "ARG", "name": "Argentina", "status": "testing", "iso_alpha": "ARG", "description": "Em fase de análise de mercado desde início de 2024."}
-    ]
-    return countries
+    # Verificar se já existem países salvos na sessão
+    if 'countries_data' not in st.session_state:
+        # Dados iniciais
+        countries = [
+            {"id": "BRA", "name": "Brasil", "status": "discontinued", "iso_alpha": "BRA", "description": "Foi um dos primeiros mercados internacionais, mas operações encerradas em 2022."},
+            {"id": "PAN", "name": "Panamá", "status": "discontinued", "iso_alpha": "PAN", "description": "Operações iniciadas em 2019 e encerradas em 2023 devido a desafios logísticos."},
+            {"id": "CHL", "name": "Chile", "status": "selling", "iso_alpha": "CHL", "description": "Mercado em crescimento desde 2020, com forte presença nas principais cidades."},
+            {"id": "MEX", "name": "México", "status": "selling", "iso_alpha": "MEX", "description": "Um dos mercados mais importantes, com operações desde 2018."},
+            {"id": "ECU", "name": "Equador", "status": "selling", "iso_alpha": "ECU", "description": "Operações estáveis e lucrativas desde 2021."},
+            {"id": "COL", "name": "Colômbia", "status": "selling", "iso_alpha": "COL", "description": "Mercado em expansão com alto potencial de crescimento."},
+            {"id": "ESP", "name": "Espanha", "status": "testing", "iso_alpha": "ESP", "description": "Fase de testes iniciada em 2024, avaliando viabilidade do mercado europeu."},
+            {"id": "PRT", "name": "Portugal", "status": "testing", "iso_alpha": "PRT", "description": "Testes iniciais com potencial para ser porta de entrada para Europa."},
+            {"id": "ARG", "name": "Argentina", "status": "testing", "iso_alpha": "ARG", "description": "Em fase de análise de mercado desde início de 2024."}
+        ]
+        st.session_state.countries_data = countries
+    
+    return st.session_state.countries_data
+
+# Função para adicionar um novo país
+def add_country(name, status, iso_alpha, description):
+    if not name or not iso_alpha or not status or not description:
+        return False, "Todos os campos são obrigatórios."
+    
+    # Verificar se o país já existe
+    countries = get_countries_data()
+    if any(c['iso_alpha'] == iso_alpha for c in countries):
+        return False, f"País com código {iso_alpha} já existe."
+    
+    # Criar novo país
+    new_country = {
+        "id": iso_alpha,
+        "name": name,
+        "status": status,
+        "iso_alpha": iso_alpha,
+        "description": description
+    }
+    
+    # Adicionar à lista
+    st.session_state.countries_data.append(new_country)
+    return True, f"País {name} adicionado com sucesso!"
 
 # Função para obter o status label formatado
 def get_status_badge(status):
@@ -195,21 +223,22 @@ def create_world_map(countries_data):
         stroke='white',
         strokeWidth=0.5
     ).encode(
-        color=alt.condition(
-            alt.datum.id.isin(countries_df['iso_alpha'].tolist()),
-            alt.Color('status:N', 
+        color=alt.Color('status:N', 
                       scale=alt.Scale(
                           domain=['selling', 'testing', 'discontinued'],
                           range=['#0d9488', '#e6b405', '#dc2626']
                       ),
                       legend=None
                      ),
-            alt.value('#CCCCCC')
-        ),
         tooltip=['id:N', 'name:N', 'status:N']
     ).transform_lookup(
         lookup='id',
         from_=alt.LookupData(countries_df, 'iso_alpha', ['name', 'status'])
+    ).transform_filter(
+        alt.FieldOneOfPredicate(
+            field='id', 
+            oneOf=countries_df['iso_alpha'].tolist()
+        )
     )
     
     return (countries_chart + highlighted_countries).project('equalEarth')
@@ -224,6 +253,66 @@ def main():
                 '<div><img src="https://via.placeholder.com/150x50" alt="Logo Grupo Chegou"></div>'
                 '</div>', 
                 unsafe_allow_html=True)
+    
+    # Sidebar para adicionar novos países
+    with st.sidebar:
+        st.header("🌍 Adicionar Novo País")
+        with st.form("add_country_form"):
+            country_name = st.text_input("Nome do País")
+            
+            country_iso = st.text_input("Código ISO Alpha-3 (3 letras)", 
+                                      help="Código de 3 letras do país, ex: BRA, USA, CAN")
+            
+            country_status = st.selectbox(
+                "Status",
+                options=["selling", "testing", "discontinued"],
+                format_func=lambda x: {
+                    "selling": "Vendendo Atualmente",
+                    "testing": "Em Fase de Testes",
+                    "discontinued": "Descontinuado"
+                }.get(x)
+            )
+            
+            country_description = st.text_area("Descrição")
+            
+            submitted = st.form_submit_button("Adicionar País")
+            
+            if submitted:
+                success, message = add_country(
+                    country_name, 
+                    country_status, 
+                    country_iso.upper() if country_iso else "", 
+                    country_description
+                )
+                
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
+        
+        # Lista de países ISO para referência
+        with st.expander("Lista de Códigos ISO Comuns"):
+            st.markdown("""
+            - Argentina: ARG
+            - Bolívia: BOL
+            - Brasil: BRA
+            - Canadá: CAN
+            - Chile: CHL
+            - China: CHN
+            - Colômbia: COL
+            - Equador: ECU
+            - Espanha: ESP
+            - Estados Unidos: USA
+            - França: FRA
+            - Itália: ITA
+            - México: MEX
+            - Panamá: PAN
+            - Peru: PER
+            - Portugal: PRT
+            - Reino Unido: GBR
+            - Uruguai: URY
+            - Venezuela: VEN
+            """)
     
     # Obter dados dos países
     countries_data = get_countries_data()
@@ -290,48 +379,69 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Detalhar informações dos países por categoria
-    st.subheader("📊 Detalhamento por Status")
+    tabs = st.tabs(["Vendendo Atualmente", "Em Fase de Testes", "Descontinuados", "Todos os Países"])
     
-    tab1, tab2, tab3 = st.tabs(["Vendendo Atualmente", "Em Fase de Testes", "Descontinuados"])
-    
-    with tab1:
+    with tabs[0]:  # Vendendo Atualmente
         selling_countries = [c for c in countries_data if c['status'] == 'selling']
         if selling_countries:
             for country in selling_countries:
                 st.markdown(f"""
                 <div class="country-card selling">
-                    <div class="country-name">{country['name']} {get_status_badge('selling')}</div>
+                    <div class="country-name">{country['name']} ({country['iso_alpha']}) {get_status_badge('selling')}</div>
                     <p>{country['description']}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
             st.info("Não há países nesta categoria.")
     
-    with tab2:
+    with tabs[1]:  # Em Fase de Testes
         testing_countries = [c for c in countries_data if c['status'] == 'testing']
         if testing_countries:
             for country in testing_countries:
                 st.markdown(f"""
                 <div class="country-card testing">
-                    <div class="country-name">{country['name']} {get_status_badge('testing')}</div>
+                    <div class="country-name">{country['name']} ({country['iso_alpha']}) {get_status_badge('testing')}</div>
                     <p>{country['description']}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
             st.info("Não há países nesta categoria.")
     
-    with tab3:
+    with tabs[2]:  # Descontinuados
         discontinued_countries = [c for c in countries_data if c['status'] == 'discontinued']
         if discontinued_countries:
             for country in discontinued_countries:
                 st.markdown(f"""
                 <div class="country-card discontinued">
-                    <div class="country-name">{country['name']} {get_status_badge('discontinued')}</div>
+                    <div class="country-name">{country['name']} ({country['iso_alpha']}) {get_status_badge('discontinued')}</div>
                     <p>{country['description']}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
             st.info("Não há países nesta categoria.")
+    
+    with tabs[3]:  # Todos os Países
+        # Exibição em formato de tabela para fácil visualização
+        if countries_data:
+            # Preparar dados para a tabela
+            data_for_table = []
+            for country in countries_data:
+                status_text = {
+                    "selling": "Vendendo Atualmente",
+                    "testing": "Em Fase de Testes", 
+                    "discontinued": "Descontinuado"
+                }.get(country['status'])
+                
+                data_for_table.append({
+                    "Nome": country['name'],
+                    "Código ISO": country['iso_alpha'],
+                    "Status": status_text,
+                    "Descrição": country['description']
+                })
+            
+            # Criar DataFrame e mostrar como tabela
+            df = pd.DataFrame(data_for_table)
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
 if __name__ == "__main__":
     main()
