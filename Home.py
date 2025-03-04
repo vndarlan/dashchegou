@@ -1,9 +1,7 @@
 import streamlit as st
 import os
 import pandas as pd
-import altair as alt
-import json
-from urllib.request import urlopen
+import plotly.express as px
 
 # Nota: A configuração do servidor deve ser feita via command line ou config.toml
 # e não pode ser alterada programaticamente no código
@@ -135,6 +133,25 @@ def add_custom_css():
         border-radius: 4px;
         margin-right: 0.5rem;
     }
+    .admin-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border: 1px solid #e9ecef;
+    }
+    .admin-button {
+        background-color: #6c757d;
+        color: white;
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        text-align: center;
+        display: inline-block;
+        float: right;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -190,58 +207,59 @@ def get_status_badge(status):
     else:  # discontinued
         return '<span class="status-badge discontinued">Descontinuado</span>'
 
-# Função para obter a cor do país no mapa
-def get_country_color(status):
-    if status == "selling":
-        return "#0d9488"  # Verde
-    elif status == "testing":
-        return "#e6b405"  # Amarelo
-    else:  # discontinued
-        return "#dc2626"  # Vermelho
-
-# Função para criar o mapa com Vega-Altair
-def create_world_map(countries_data):
-    # Preparar os dados para o mapa
-    countries_df = pd.DataFrame(countries_data)
+# Função para criar o mapa com Plotly Express
+def create_world_map_plotly(countries_data):
+    # Preparar dados para o plotly
+    df = pd.DataFrame(countries_data)
     
-    # Carregar o TopoJSON dos países do mundo
-    url = "https://raw.githubusercontent.com/topojson/world-atlas/master/countries-110m.json"
+    # Mapeamento de status para cores e números (para o choropleth)
+    status_map = {
+        "selling": 3,       # Verde (atualmente vendendo)
+        "testing": 2,       # Amarelo (em teste)
+        "discontinued": 1   # Vermelho (descontinuado)
+    }
     
-    # Criar o gráfico com Altair
-    countries_chart = alt.Chart(url).mark_geoshape(
-        stroke='white',
-        strokeWidth=0.5
-    ).encode(
-        color=alt.value('#CCCCCC')
-    ).properties(
-        width=900,
-        height=500
+    # Adicionar valor numérico para colorir o mapa
+    df['status_value'] = df['status'].map(status_map)
+    
+    # Mapear status para texto legível
+    status_text_map = {
+        "selling": "Vendendo Atualmente",
+        "testing": "Em Fase de Testes",
+        "discontinued": "Descontinuado"
+    }
+    df['status_text'] = df['status'].map(status_text_map)
+    
+    # Criar o mapa choropleth
+    fig = px.choropleth(
+        df,
+        locations="iso_alpha",  # Coluna com os códigos ISO Alpha-3
+        color="status_value",   # Coluna com os valores para colorir
+        hover_name="name",      # Nome ao passar o mouse
+        color_continuous_scale=[[0, '#CCCCCC'], [0.25, '#dc2626'], [0.5, '#e6b405'], [0.75, '#0d9488']],
+        range_color=[0, 3],
+        labels={'status_value': 'Status'},
+        custom_data=['name', 'status_text', 'description']  # Dados para mostrar no hover
     )
     
-    # Adicionar os países destacados
-    highlighted_countries = alt.Chart(url).mark_geoshape(
-        stroke='white',
-        strokeWidth=0.5
-    ).encode(
-        color=alt.Color('status:N', 
-                      scale=alt.Scale(
-                          domain=['selling', 'testing', 'discontinued'],
-                          range=['#0d9488', '#e6b405', '#dc2626']
-                      ),
-                      legend=None
-                     ),
-        tooltip=['id:N', 'name:N', 'status:N']
-    ).transform_lookup(
-        lookup='id',
-        from_=alt.LookupData(countries_df, 'iso_alpha', ['name', 'status'])
-    ).transform_filter(
-        alt.FieldOneOfPredicate(
-            field='id', 
-            oneOf=countries_df['iso_alpha'].tolist()
-        )
+    # Configurar o hover template
+    fig.update_traces(
+        hovertemplate="<b>%{customdata[0]}</b><br>Status: %{customdata[1]}<br>%{customdata[2]}"
     )
     
-    return (countries_chart + highlighted_countries).project('equalEarth')
+    # Configurações gerais do mapa
+    fig.update_layout(
+        geo=dict(
+            showframe=False,
+            showcoastlines=True,
+            projection_type='natural earth'
+        ),
+        coloraxis_showscale=False,  # Esconder a barra de escala
+        margin=dict(l=0, r=0, t=0, b=0),  # Remover margens
+        height=600
+    )
+    
+    return fig
 
 # Função principal
 def main():
@@ -253,66 +271,6 @@ def main():
                 '<div><img src="https://via.placeholder.com/150x50" alt="Logo Grupo Chegou"></div>'
                 '</div>', 
                 unsafe_allow_html=True)
-    
-    # Sidebar para adicionar novos países
-    with st.sidebar:
-        st.header("🌍 Adicionar Novo País")
-        with st.form("add_country_form"):
-            country_name = st.text_input("Nome do País")
-            
-            country_iso = st.text_input("Código ISO Alpha-3 (3 letras)", 
-                                      help="Código de 3 letras do país, ex: BRA, USA, CAN")
-            
-            country_status = st.selectbox(
-                "Status",
-                options=["selling", "testing", "discontinued"],
-                format_func=lambda x: {
-                    "selling": "Vendendo Atualmente",
-                    "testing": "Em Fase de Testes",
-                    "discontinued": "Descontinuado"
-                }.get(x)
-            )
-            
-            country_description = st.text_area("Descrição")
-            
-            submitted = st.form_submit_button("Adicionar País")
-            
-            if submitted:
-                success, message = add_country(
-                    country_name, 
-                    country_status, 
-                    country_iso.upper() if country_iso else "", 
-                    country_description
-                )
-                
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-        
-        # Lista de países ISO para referência
-        with st.expander("Lista de Códigos ISO Comuns"):
-            st.markdown("""
-            - Argentina: ARG
-            - Bolívia: BOL
-            - Brasil: BRA
-            - Canadá: CAN
-            - Chile: CHL
-            - China: CHN
-            - Colômbia: COL
-            - Equador: ECU
-            - Espanha: ESP
-            - Estados Unidos: USA
-            - França: FRA
-            - Itália: ITA
-            - México: MEX
-            - Panamá: PAN
-            - Peru: PER
-            - Portugal: PRT
-            - Reino Unido: GBR
-            - Uruguai: URY
-            - Venezuela: VEN
-            """)
     
     # Obter dados dos países
     countries_data = get_countries_data()
@@ -358,8 +316,9 @@ def main():
     
     # Exibir o mapa
     try:
-        world_map = create_world_map(countries_data)
-        st.altair_chart(world_map, use_container_width=True)
+        # Usar Plotly Express para renderizar o mapa
+        fig = create_world_map_plotly(countries_data)
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Não foi possível renderizar o mapa: {str(e)}")
         
@@ -442,6 +401,73 @@ def main():
             # Criar DataFrame e mostrar como tabela
             df = pd.DataFrame(data_for_table)
             st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # Botão de administração (discreto) na parte inferior da página
+    st.markdown('<p class="admin-button" id="admin-button">Administração</p>', unsafe_allow_html=True)
+    
+    # Seção de administração (só aparece quando o expander é clicado)
+    with st.expander("Administração de Países", expanded=False):
+        st.subheader("📝 Cadastro de Novo País")
+        
+        with st.form("add_country_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                country_name = st.text_input("Nome do País")
+                country_iso = st.text_input("Código ISO Alpha-3 (3 letras)", 
+                                      help="Código de 3 letras do país, ex: BRA, USA, CAN")
+            
+            with col2:
+                country_status = st.selectbox(
+                    "Status",
+                    options=["selling", "testing", "discontinued"],
+                    format_func=lambda x: {
+                        "selling": "Vendendo Atualmente",
+                        "testing": "Em Fase de Testes",
+                        "discontinued": "Descontinuado"
+                    }.get(x)
+                )
+            
+            country_description = st.text_area("Descrição")
+            
+            submitted = st.form_submit_button("Adicionar País")
+            
+            if submitted:
+                success, message = add_country(
+                    country_name, 
+                    country_status, 
+                    country_iso.upper() if country_iso else "", 
+                    country_description
+                )
+                
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
+        
+        # Lista de códigos ISO Comuns
+        with st.expander("Lista de Códigos ISO Comuns"):
+            st.markdown("""
+            - Argentina: ARG
+            - Bolívia: BOL
+            - Brasil: BRA
+            - Canadá: CAN
+            - Chile: CHL
+            - China: CHN
+            - Colômbia: COL
+            - Equador: ECU
+            - Espanha: ESP
+            - Estados Unidos: USA
+            - França: FRA
+            - Itália: ITA
+            - México: MEX
+            - Panamá: PAN
+            - Peru: PER
+            - Portugal: PRT
+            - Reino Unido: GBR
+            - Uruguai: URY
+            - Venezuela: VEN
+            """)
 
 if __name__ == "__main__":
     main()
