@@ -65,7 +65,7 @@ def show_logout_button():
         force_rerun()
 
 def main():
-    # Configuração da página
+    # Configuração da página (deve ser a primeira chamada Streamlit)
     st.set_page_config(
         page_title="Dashboard Grupo Chegou",
         page_icon="🏢",
@@ -83,36 +83,132 @@ def main():
     if not st.session_state["logged_in"]:
         login_page()
     else:
-        # Define páginas de acordo com o cargo
+        # Adiciona database ao path do sistema para que os scripts possam encontrar
+        # Ajustes para PostgreSQL
+        if "db_configured" not in st.session_state:
+            # Configurar conexão com PostgreSQL
+            os.environ["DATABASE_URL"] = os.environ.get("DATABASE_URL", "")
+            st.session_state["db_configured"] = True
+        
+        # Define páginas customizadas sem usar st.set_page_config em cada página
         if st.session_state["cargo"] == "Administrador":
-            pages = {
-                "Principal": [
-                    st.Page("Principal/Home.py", title="Home", icon="🏠"),
-                    st.Page("Principal/Calendário.py", title="Calendário", icon="📅")
-                ],
-                "Dashboard": [
-                    st.Page("Dashboard/Dash Jira.py", title="Dashboard Jira", icon="📊"),
-                    st.Page("Dashboard/ia.py", title="Projetos IA", icon="🤖")
-                ]
-            }
+            st.sidebar.title("🏢 Grupo Chegou")
+            st.sidebar.markdown("### Navegação")
+            
+            menu = st.sidebar.radio(
+                "Selecione uma página:",
+                ["Home", "Calendário", "Dashboard Jira", "Projetos IA"],
+                label_visibility="collapsed"
+            )
+            
+            # Exibe botão de logout
+            show_logout_button()
+            
+            # Carrega a página selecionada mas evita chamar set_page_config
+            if menu == "Home":
+                # Importação customizada para evitar set_page_config
+                with open("Principal/Home.py", "r", encoding="utf-8") as f:
+                    home_code = f.read()
+                # Remover chamadas a set_page_config
+                home_code = "\n".join([line for line in home_code.split("\n") 
+                                     if "set_page_config" not in line])
+                # Executar código modificado
+                exec(home_code, globals())
+                
+            elif menu == "Calendário":
+                try:
+                    # Configurar conexão com banco antes de importar
+                    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+                    from database.calendariodatabase import Database
+                    
+                    # Importação customizada
+                    with open("Principal/Calendário.py", "r", encoding="utf-8") as f:
+                        cal_code = f.read()
+                    # Remover chamadas a set_page_config
+                    cal_code = "\n".join([line for line in cal_code.split("\n") 
+                                         if "set_page_config" not in line])
+                    # Executar código modificado
+                    exec(cal_code, globals())
+                except Exception as e:
+                    st.error(f"Erro ao carregar página Calendário: {str(e)}")
+                    st.info("Verifique se a pasta 'database' existe com o arquivo calendariodatabase.py.")
+                
+            elif menu == "Dashboard Jira":
+                # Importação customizada
+                with open("Dashboard/Dash Jira.py", "r", encoding="utf-8") as f:
+                    dash_code = f.read()
+                # Remover chamadas a set_page_config
+                dash_code = "\n".join([line for line in dash_code.split("\n") 
+                                      if "set_page_config" not in line])
+                # Executar código modificado
+                exec(dash_code, globals())
+                
+            elif menu == "Projetos IA":
+                try:
+                    # Importação customizada
+                    with open("Dashboard/ia.py", "r", encoding="utf-8") as f:
+                        ia_code = f.read()
+                    # Remover chamadas a set_page_config
+                    ia_code = "\n".join([line for line in ia_code.split("\n") 
+                                        if "set_page_config" not in line])
+                    # Executar código modificado
+                    exec(ia_code, globals())
+                except FileNotFoundError:
+                    st.title("Projetos de IA")
+                    st.info("Módulo de Projetos de IA em desenvolvimento")
+                
         else:
-            # Usuário comum
-            pages = {
-                "Principal": [
-                    st.Page("Principal/Home.py", title="Home", icon="🏠"),
-                    st.Page("Principal/Calendário.py", title="Calendário", icon="📅")
-                ],
-                "Dashboard": [
-                    st.Page("Dashboard/Dash Jira.py", title="Dashboard Jira", icon="📊")
-                ]
-            }
-
-        # Cria a barra de navegação
-        pg = st.navigation(pages, position="sidebar", expanded=False)
-        # Exibe botão de logout
-        show_logout_button()
-        # Executa a página selecionada
-        pg.run()
+            # Menu para usuários comuns (acesso limitado)
+            st.sidebar.title("🏢 Grupo Chegou")
+            st.sidebar.markdown("### Navegação")
+            
+            menu = st.sidebar.radio(
+                "Selecione uma página:",
+                ["Home", "Calendário", "Dashboard Jira"],  # Sem acesso a Projetos IA
+                label_visibility="collapsed"
+            )
+            
+            # Exibe botão de logout
+            show_logout_button()
+            
+            # Carrega a página selecionada evitando set_page_config
+            if menu == "Home":
+                # Importação customizada
+                with open("Principal/Home.py", "r", encoding="utf-8") as f:
+                    home_code = f.read()
+                # Remover chamadas a set_page_config
+                home_code = "\n".join([line for line in home_code.split("\n") 
+                                     if "set_page_config" not in line])
+                # Executar código modificado
+                exec(home_code, globals())
+                
+            elif menu == "Calendário":
+                try:
+                    # Configurar conexão com banco antes de importar
+                    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+                    from database.calendariodatabase import Database
+                    
+                    # Importação customizada
+                    with open("Principal/Calendário.py", "r", encoding="utf-8") as f:
+                        cal_code = f.read()
+                    # Remover chamadas a set_page_config
+                    cal_code = "\n".join([line for line in cal_code.split("\n") 
+                                         if "set_page_config" not in line])
+                    # Executar código modificado
+                    exec(cal_code, globals())
+                except Exception as e:
+                    st.error(f"Erro ao carregar página Calendário: {str(e)}")
+                    st.info("Verifique se a pasta 'database' existe com o arquivo calendariodatabase.py.")
+                
+            elif menu == "Dashboard Jira":
+                # Importação customizada
+                with open("Dashboard/Dash Jira.py", "r", encoding="utf-8") as f:
+                    dash_code = f.read()
+                # Remover chamadas a set_page_config
+                dash_code = "\n".join([line for line in dash_code.split("\n") 
+                                      if "set_page_config" not in line])
+                # Executar código modificado
+                exec(dash_code, globals())
 
 if __name__ == "__main__":
     main()
