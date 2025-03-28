@@ -87,24 +87,23 @@ def main():
         if st.session_state["cargo"] == "Administrador":
             pages = {
                 "Principal": [
-                    st.Page("Home.py", title="Home", icon="🏠"),
-                    st.Page("Calendário.py", title="Calendário", icon="📅")
+                    st.Page("Principal/Home.py", title="Home", icon="🏠"),
+                    st.Page("Principal/Calendário.py", title="Calendário", icon="📅")
                 ],
                 "Dashboard": [
-                    st.Page("Dash Jira.py", title="Dashboard Jira", icon="📊"),
-                    st.Page("ia.py", title="Projetos IA", icon="🤖"),
-                ],
+                    st.Page("Dashboard/Dash Jira.py", title="Dashboard Jira", icon="📊"),
+                    st.Page("Dashboard/ia.py", title="Projetos IA", icon="🤖")
+                ]
             }
         else:
             # Usuário comum
             pages = {
                 "Principal": [
-                    st.Page("Home.py", title="Home", icon="🏠"),
-                    st.Page("Calendário.py", title="Calendário", icon="📅")
+                    st.Page("Principal/Home.py", title="Home", icon="🏠"),
+                    st.Page("Principal/Calendário.py", title="Calendário", icon="📅")
                 ],
                 "Dashboard": [
-                    st.Page("Dash Jira.py", title="Dashboard Jira", icon="📊"),
-                    st.Page("ia.py", title="Projetos IA", icon="🤖"),
+                    st.Page("Dashboard/Dash Jira.py", title="Dashboard Jira", icon="📊")
                 ]
             }
 
