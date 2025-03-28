@@ -14,13 +14,6 @@ except ImportError:
     # Se o arquivo não estiver disponível, mostra um erro
     st.error("Não foi possível importar o módulo de banco de dados. Verifique se a pasta 'database' existe com o arquivo calendariodatabase.py.")
 
-# Configuração da página
-st.set_page_config(
-    page_title="Calendários - Dashboard da Empresa",
-    page_icon="📅",
-    layout="wide"
-)
-
 # Função para adicionar CSS personalizado
 def local_css():
     st.markdown("""
