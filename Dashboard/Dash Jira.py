@@ -10,13 +10,6 @@ from io import BytesIO
 import time
 import base64
 
-# Configuração da página
-st.set_page_config(
-    page_title="Dashboard Jira - Dashboard da Empresa",
-    page_icon="📊",
-    layout="wide"
-)
-
 # Função para adicionar CSS personalizado
 def local_css():
     st.markdown("""
