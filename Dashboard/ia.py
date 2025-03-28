@@ -5,21 +5,23 @@ import altair as alt
 import pandas as pd
 import datetime
 
-# Add root directory to path for db_utils import
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Import database functions
-from db_utils import (
-    init_db, 
-    load_data, 
-    insert_project, 
-    update_project_status, 
-    delete_project, 
-    update_project,
-    create_feedback_table,
-    load_feedbacks,
-    delete_feedback
-)
+# Try different approaches to import db_utils
+try:
+    from db_utils import (init_db, load_data, insert_project, 
+                         update_project_status, delete_project, update_project)
+except ImportError:
+    possible_paths = [
+        os.path.dirname(os.path.abspath(__file__)),  # Current directory
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),  # Parent directory 
+        '/app'  # Root of Railway deployment
+    ]
+    
+    for path in possible_paths:
+        if path not in sys.path:
+            sys.path.append(path)
+    
+    from db_utils import (init_db, load_data, insert_project, 
+                         update_project_status, delete_project, update_project)
 
 # Initialize database
 init_db()
@@ -222,40 +224,17 @@ def new_project_page():
             st.session_state.df_projects = load_data()
             st.info("Agora, acesse o 'Dashboard de Projetos' para ver o novo projeto.")
 
-def feedbacks_page():
-    create_feedback_table()
-    st.header("Feedbacks Recebidos")
-    feedbacks = load_feedbacks()
-    if feedbacks.empty:
-        st.info("Nenhum feedback recebido até o momento.")
-    else:
-        for index, row in feedbacks.iterrows():
-            with st.container():
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    st.markdown(f"**Feedback ID {row['id']}**")
-                    st.write(f"**Timestamp:** {row['timestamp']}")
-                    st.write(row['feedback'])
-                with col2:
-                    if st.button("Excluir", key=f"delete_{row['id']}"):
-                        delete_feedback(row['id'])
-                        st.success("Feedback excluído!")
-                        st.rerun()
-
 def main():
     st.title("GC IA & Automações")
     
     # Use tabs for navigation
-    tabs = st.tabs(["Dashboard", "Novo Projeto", "Feedbacks"])
+    tabs = st.tabs(["Dashboard", "Novo Projeto"])
     
     with tabs[0]:
         dashboard_page()
     
     with tabs[1]:
         new_project_page()
-    
-    with tabs[2]:
-        feedbacks_page()
 
 if __name__ == "__main__":
     main()

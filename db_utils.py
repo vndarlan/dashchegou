@@ -4,9 +4,6 @@ import datetime
 import pandas as pd
 
 def get_connection():
-    """
-    Returns database connection (PostgreSQL on Railway or SQLite locally)
-    """
     DATABASE_URL = os.getenv("DATABASE_URL")
     if DATABASE_URL:
         import psycopg2
@@ -16,9 +13,6 @@ def get_connection():
         return sqlite3.connect("projetos.db", check_same_thread=False)
 
 def execute_query(cursor, query, params=None):
-    """
-    Executes a query with proper placeholders for PostgreSQL/SQLite
-    """
     if params is None:
         params = ()
     if os.getenv("DATABASE_URL"):
@@ -26,9 +20,6 @@ def execute_query(cursor, query, params=None):
     cursor.execute(query, params)
 
 def init_db():
-    """
-    Initializes database with projects table
-    """
     conn = get_connection()
     c = conn.cursor()
     query = '''
@@ -50,9 +41,6 @@ def init_db():
     conn.close()
 
 def load_data():
-    """
-    Loads project data as DataFrame
-    """
     conn = get_connection()
     query = '''
         SELECT 
@@ -142,41 +130,5 @@ def update_project(project_id, changes):
     c = conn.cursor()
     query = f"UPDATE projetos SET {set_clause} WHERE id = ?"
     execute_query(c, query, tuple(values))
-    conn.commit()
-    conn.close()
-
-def create_feedback_table():
-    conn = get_connection()
-    c = conn.cursor()
-    query = '''
-        CREATE TABLE IF NOT EXISTS feedback (
-            id SERIAL PRIMARY KEY,
-            feedback TEXT NOT NULL,
-            timestamp TEXT NOT NULL
-        )
-    '''
-    execute_query(c, query)
-    conn.commit()
-    conn.close()
-
-def insert_feedback(feedback):
-    conn = get_connection()
-    c = conn.cursor()
-    query = 'INSERT INTO feedback (feedback, timestamp) VALUES (?, ?)'
-    execute_query(c, query, (feedback, datetime.datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
-
-def load_feedbacks():
-    conn = get_connection()
-    df = pd.read_sql_query("SELECT * FROM feedback ORDER BY timestamp DESC", conn)
-    conn.close()
-    return df
-
-def delete_feedback(feedback_id):
-    conn = get_connection()
-    c = conn.cursor()
-    query = 'DELETE FROM feedback WHERE id = ?'
-    execute_query(c, query, (feedback_id,))
     conn.commit()
     conn.close()
